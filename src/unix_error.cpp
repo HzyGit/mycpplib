@@ -7,7 +7,8 @@ UnixError::UnixError(const std::string &note)throw()
 	:_errno(errno)
 {
 	std::ostringstream sout;
-	sout<<__FILE__<<" "<<__LINE__;
+	sout<<program_invocation_short_name<<":";
+	sout<<__FILE__<<","<<__LINE__;
 	if(!note.empty())
 		sout<<":"<<note;
 	if(_errno>0)
@@ -19,7 +20,8 @@ UnixError::UnixError(int err,const std::string &note)throw()
 	:_errno(err)
 {
 	std::ostringstream sout;
-	sout<<__FILE__<<" "<<__LINE__;
+	sout<<program_invocation_short_name<<":";
+	sout<<__FILE__<<","<<__LINE__;
 	if(!note.empty())
 		sout<<":"<<note;
 	if(_errno>0)
@@ -36,3 +38,7 @@ int UnixError::get_errno()const throw()
 	return _errno;
 }
 
+const char *UnixError::what()const noexcept
+{
+	return _err_str.c_str();
+}

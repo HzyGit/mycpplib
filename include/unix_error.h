@@ -9,7 +9,7 @@ class UnixError : public std::exception
 		UnixError(const std::string &note=std::string())throw();
 		UnixError(int err,const std::string &note=std::string())throw();
 		virtual ~UnixError()throw();
-
+		virtual const char * what()const noexcept override;
 		int get_errno()const throw();
 	private:
 		int _errno;
