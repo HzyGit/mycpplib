@@ -5,6 +5,14 @@
 #include <stdexcept>
 
 #include <semaphore.h>
+#include <sys/mman.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <fcntl.h>
+
+#include "unix_error.h"
+#include "unique_fd.h"
 
 class MemPool
 {
@@ -54,9 +62,8 @@ class BufMemPool : public MemPool
 		{
 			ssize_t left=_len-sizeof(BufMemPool)-sizeof(size_t);
 			if(left<0)
-				_item_num=0;
-			else
-				_item_num=left/(unit_size()+sizeof(size_t));
+				throw MemPoolError("buf_len is too short to contruct BufMemPool");
+			_item_num=left/(unit_size()+sizeof(size_t));
 			/// 初始化index
 			for(int i=0;i<_item_num;++i)
 				_index[i]=i;
@@ -70,9 +77,12 @@ class BufMemPool : public MemPool
 				init_unit(i);
 			}
 			/// 初始化队列相关标志
-			sem_init(&_sem,1,1);
-			_head=0;
-			_tail=_item_num;
+			if(_item_num>0)
+			{
+				sem_init(&_sem,1,1);
+				_head=0;
+				_tail=_item_num;
+			}
 		}
 
 		BufMemPool(const BufMemPool &vec)=delete;
@@ -167,7 +177,38 @@ class BufMemPool : public MemPool
 class ShmMemVecPool : public MemPool
 {
 	public:
-
+		// 构造/析构
+		ShmMemVecPool(void *buf=nullptr,size_t buf_len=0,size_t item_size=4,bool is_unmap=true)
+			:_buf(buf),_buf_len(buf_len),_is_unmap(is_unmap)
+		{
+			char temp[10];
+			if(nullptr==_buf)
+			{
+				_buf_len=0;
+				_buf=temp;
+			}
+			_mem_pool=new(buf)BufMemPool(_buf_len,item_size);
+		}
+		ShmMemVecPool(const char *shmpath,size_t item_size=4,bool is_unmap=true)
+			:_is_unmap(is_unmap)
+		{
+			unique_fd fd(shm_open(shmpath,O_RDWR,0));
+			if(!fd)
+				throw UnixError(std::string("shm_open ")+shmpath+" error");
+			struct stat st;
+			fstat(fd.get(),&st);
+			_buf_len=st.st_size;
+			_mem_pool=new(_buf)BufMemPool(_buf_len,item_size);
+		}
+		ShmMemVecPool(const ShmMemVecPool &mem)=delete;
+		ShmMemVecPool & operator=(const ShmMemVecPool &mem)=delete;
+		~ShmMemVecPool()
+		{
+			_mem_pool=nullptr;
+			if(_is_unmap&&nullptr!=_buf)
+				munmap(_buf,_buf_len);
+		}
+	public:
 		/// 内存分配与释放
 		virtual void *allocate(size_t size) override;
 		virtual void deallocate(void*)override;
@@ -175,11 +216,16 @@ class ShmMemVecPool : public MemPool
 		virtual size_t allocate(void**addr ,size_t size,size_t len)override;
 		virtual size_t deallocate(void **addr,size_t size)override;
 		/// 支持的最大内存数
-		size_t get_max_item_num()override;
+		virtual size_t get_max_item_num()override;
 		/// 返回剩余内存数
-		size_t get_free_item_num()override;
+		virtual size_t get_free_item_num()override;
+		/// @brief 获取item大小
+		virtual size_t get_item_size()override;
 	private:
-
+		bool _is_unmap;   ///< 在对象析构时释放自动unmap内存
+		void *_buf;       ///< 共享内存地址
+		size_t _buf_len;  ///< 共享内存长度
+		BufMemPool *_mem_pool;    ///< buf内存池
 };
 
 #endif
