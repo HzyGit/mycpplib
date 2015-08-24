@@ -191,7 +191,7 @@ class TestShmMemVecPool : public TestBufMemPool
 		}
 		virtual void SetUp()
 		{
-			void *buf=init_shm(1024);
+			buf=init_shm(1024);
 			mem=new ShmMemVecPool(buf,1024,sizeof(int));
 			size=(1024-sizeof(BufMemPool)-sizeof(size_t))/(sizeof(int)*3+sizeof(size_t));
 		}
@@ -200,6 +200,7 @@ class TestShmMemVecPool : public TestBufMemPool
 			if(nullptr!=mem)
 				delete mem;
 		}
+		void *buf;
 };
 
 
@@ -322,4 +323,9 @@ TEST_F(TestShmMemVecPool,TestSimpleBatchAlloc)
 	delete[] q;
 }
 
+TEST_F(TestShmMemVecPool,TestGetBaseAddr)
+{
+	auto *pool=dynamic_cast<ShmMemVecPool *>(mem);
+	ASSERT_EQ(buf,pool->get_base_addr());
+}
 #endif

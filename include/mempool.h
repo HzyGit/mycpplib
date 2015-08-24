@@ -221,6 +221,12 @@ class ShmMemVecPool : public MemPool
 		virtual size_t get_free_item_num()override;
 		/// @brief 获取item大小
 		virtual size_t get_item_size()override;
+
+		/// @brief 获取共享内存基地址
+		const void *get_base_addr()const
+		{
+			return _buf;
+		}
 	private:
 		bool _is_unmap;   ///< 在对象析构时释放自动unmap内存
 		void *_buf;       ///< 共享内存地址
