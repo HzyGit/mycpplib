@@ -4,10 +4,11 @@
 TEST(TestAutoLock,TestLock)
 {
 	sem_t sem;
-	sem_init(&sem,0,1);
+	sem_init(&sem,0,2);
 	{
 		SemAutoLock semlock(&sem);
 		AutoLock &lock=semlock;
+		lock.lock();
 		lock.lock();
 		int i;
 		sem_getvalue(&sem,&i);
@@ -16,6 +17,6 @@ TEST(TestAutoLock,TestLock)
 	}
 	int i;
 	sem_getvalue(&sem,&i);
-	ASSERT_EQ(1,i);
+	ASSERT_EQ(2,i);
 }
 #endif

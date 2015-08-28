@@ -1,3 +1,3 @@
-install (FILES unix_error.h unique_fd.h mempool.h autolock.h
+install (FILES unix_error.h unique_fd.h autolock.h
 	DESTINATION include/
 	)

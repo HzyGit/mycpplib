@@ -18,16 +18,20 @@ class AutoLock
 class SemAutoLock : public AutoLock
 {
 	public:
-		SemAutoLock(sem_t *sem=nullptr,bool locked=false)
-			:_sem(sem),_is_locked(locked)
+		SemAutoLock(sem_t *sem=nullptr,int locked=0)
+			:_sem(sem),_locked(locked)
 		{
 		}
 		virtual ~SemAutoLock()
 		{
-			if(nullptr!=_sem&&_is_locked)
+			if(nullptr==_sem||_locked==0)
+				return;
+			for(int i=0;i<_locked;++i)
 				sem_post(_sem);
+			for(int i=_locked;i<0;++i)
+				sem_wait(_sem);
+			_locked=0;
 		}
-
 		SemAutoLock(const SemAutoLock &&sem)=delete;
 		SemAutoLock& operator=(const SemAutoLock& lock)=delete;
 	public:
@@ -35,9 +39,16 @@ class SemAutoLock : public AutoLock
 		{
 			if(nullptr==_sem)
 				return -EINVAL;
-			int res=sem_wait(_sem);
+			int res=0;
+			for(;;)
+			{
+				if((res=sem_wait(_sem))<0)
+					if(EINTR==errno)
+						continue;
+				break;
+			}
 			if(res==0)
-				_is_locked=true;
+				_locked++;
 			return -errno;
 		}
 
@@ -45,14 +56,15 @@ class SemAutoLock : public AutoLock
 		{
 			if(nullptr==_sem)
 				return -EINVAL;
-			int res=sem_post(_sem);
-			if(res==0)
-				_is_locked=false;
+			errno=0;
+			if(_locked>0)
+				if(sem_post(_sem)==0)
+					_locked--;
 			return -errno;
 		}
 	private:
 		sem_t *_sem;
-		bool _is_locked;
+		int _locked;
 };
 
 #endif
