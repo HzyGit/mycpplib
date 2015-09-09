@@ -67,4 +67,16 @@ class SemAutoLock : public AutoLock
 		int _locked;
 };
 
+class ThreadMutexAutoLock : public AutoLock
+{
+	public:
+		ThreadMutexAutoLock(pthread_mutex_t *lock=nullptr,bool locked=false);
+		~ThreadMutexAutoLock();
+		virtual int lock()noexcept override;
+		virtual int unlock()noexcept override;
+	private:
+		pthread_mutex_t *_lock;
+		bool _locked;
+};
+
 #endif
