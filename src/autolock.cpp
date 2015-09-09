@@ -1,4 +1,4 @@
-#include "autolock.h"
+#include "mycpp/autolock.h"
 ThreadMutexAutoLock::ThreadMutexAutoLock(pthread_mutex_t *lock,
 		bool locked)
 	:_lock(lock),_locked(lock)
